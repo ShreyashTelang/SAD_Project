@@ -1,0 +1,28 @@
+# Compiled class files & build artifacts
+**/target/
+**/build/
+**/dist/
+**/dist-ssr/
+
+# Node dependencies
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Maven wrapper jar
+**/.mvn/wrapper/maven-wrapper.jar
+
+# Logs
+logs/
+*.log
+
+# OS & IDE metadata
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
