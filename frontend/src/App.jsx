@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import AuthModal from './components/AuthModal';
+import ProfileModal from './components/ProfileModal';
 import ParkFinderView from './components/ParkFinderView';
 import TravelerBookingsView from './components/TravelerBookingsView';
 import OwnerPortalView from './components/OwnerPortalView';
@@ -14,6 +15,7 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState('discovery');
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   // Sync tab with user role upon login
   useEffect(() => {
@@ -74,6 +76,7 @@ export default function App() {
         onLogout={handleLogout}
         onQuickLogin={handleQuickLogin}
         onOpenAuth={() => setIsAuthOpen(true)}
+        onOpenProfile={() => setIsProfileOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -129,6 +132,18 @@ export default function App() {
         onClose={() => setIsAuthOpen(false)}
         onAuthSuccess={handleAuthSuccess}
       />
+
+      {/* User Profile Modal */}
+      {isProfileOpen && currentUser && (
+        <ProfileModal
+          currentUser={currentUser}
+          onClose={() => setIsProfileOpen(false)}
+          onProfileUpdated={(updated) => {
+            setCurrentUser(updated);
+            localStorage.setItem('sps_user', JSON.stringify(updated));
+          }}
+        />
+      )}
 
     </div>
   );

@@ -12,6 +12,8 @@ export default function ParkFinderView({ currentUser, onRequireAuth }) {
   const [selectedFacilityId, setSelectedFacilityId] = useState(null);
   const [facilityDetails, setFacilityDetails] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [alternativeFacilities, setAlternativeFacilities] = useState([]);
+  const [alternativesLoading, setAlternativesLoading] = useState(false);
 
   // Reservation & Lock state
   const [selectedSlot, setSelectedSlot] = useState(null);
@@ -95,6 +97,7 @@ export default function ParkFinderView({ currentUser, onRequireAuth }) {
     setConfirmedBooking(null);
     setBookingError('');
     setCancellationNotice('');
+    setAlternativeFacilities([]);
 
     try {
       const res = await fetch(`/api/discovery/facilities/${id}`);
@@ -102,10 +105,29 @@ export default function ParkFinderView({ currentUser, onRequireAuth }) {
         const data = await res.json();
         setFacilityDetails(data);
       }
+
+      // Fetch alternatives according to UML Activity & Interaction Overview specifications
+      fetchAlternatives(id);
     } catch (err) {
       console.error(err);
     } finally {
       setDetailsLoading(false);
+    }
+  };
+
+  const fetchAlternatives = async (facId) => {
+    setAlternativesLoading(true);
+    try {
+      const url = `/api/discovery/facilities/${facId}/alternatives${vehicleFilter ? `?vehicleType=${vehicleFilter}` : ''}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        setAlternativeFacilities(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch alternatives:', err);
+    } finally {
+      setAlternativesLoading(false);
     }
   };
 
@@ -542,9 +564,28 @@ export default function ParkFinderView({ currentUser, onRequireAuth }) {
                     borderRadius: 'var(--radius-md)',
                     marginBottom: '1rem',
                     fontSize: '0.85rem',
-                    border: '1px solid #fecaca'
+                    border: '1px solid #fecaca',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '0.5rem'
                   }}>
-                    {bookingError}
+                    <div>
+                      <AlertTriangle size={16} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'text-bottom' }} />
+                      {bookingError}
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline"
+                      style={{ backgroundColor: '#ffffff', color: 'var(--danger)', borderColor: '#fca5a5', padding: '0.25rem 0.6rem', fontSize: '0.75rem' }}
+                      onClick={() => {
+                        setBookingError('');
+                        setSimulateDecline(false);
+                      }}
+                    >
+                      <RefreshCw size={12} style={{ display: 'inline', marginRight: '4px' }} /> Retry Payment
+                    </button>
                   </div>
                 )}
 
@@ -770,6 +811,69 @@ export default function ParkFinderView({ currentUser, onRequireAuth }) {
                       );
                     })}
                   </div>
+
+                  {/* UML Activity Diagram Decision: [No] Slot available? -> Suggest Alternatives */}
+                  {facilityDetails?.slots && facilityDetails?.slots?.length > 0 && facilityDetails?.slots?.every(s => s.slotStatus !== 'AVAILABLE') && (
+                    <div style={{
+                      backgroundColor: '#fffbeb',
+                      border: '1px solid #fde68a',
+                      padding: '0.75rem',
+                      borderRadius: 'var(--radius-md)',
+                      marginTop: '0.75rem',
+                      color: '#92400e',
+                      fontSize: '0.85rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem'
+                    }}>
+                      <AlertTriangle size={18} color="#d97706" />
+                      <span>All slots in this facility are currently occupied or locked. Browse nearby alternatives below.</span>
+                    </div>
+                  )}
+
+                  {alternativeFacilities.length > 0 && (
+                    <div style={{
+                      backgroundColor: '#f8fafc',
+                      border: '1px solid var(--border)',
+                      borderRadius: 'var(--radius-md)',
+                      padding: '0.75rem',
+                      marginTop: '0.75rem'
+                    }}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>Suggested Alternative Facilities ({alternativeFacilities.length})</span>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>From UML Activity Spec</span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {alternativeFacilities.map(alt => (
+                          <div key={alt.facilityId} style={{
+                            backgroundColor: '#ffffff',
+                            border: '1px solid var(--border)',
+                            borderRadius: '6px',
+                            padding: '0.5rem 0.75rem',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            fontSize: '0.8rem'
+                          }}>
+                            <div>
+                              <strong style={{ display: 'block', color: 'var(--text-main)' }}>{alt.name}</strong>
+                              <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>
+                                {alt.address} • {alt.distanceKm ? `${alt.distanceKm.toFixed(1)} km away` : ''} • {alt.availableSlots} available spots
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn btn-outline btn-sm"
+                              style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                              onClick={() => handleOpenFacility(alt.facilityId)}
+                            >
+                              Switch to this
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem', textAlign: 'left' }}>

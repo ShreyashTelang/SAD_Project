@@ -43,6 +43,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/discovery/**").permitAll()
+                        .requestMatchers("/api/iot/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/owner/**").hasRole("OWNER")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")

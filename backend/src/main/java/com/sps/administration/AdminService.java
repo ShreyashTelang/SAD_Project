@@ -77,6 +77,56 @@ public class AdminService {
         return facilityRepository.save(facility);
     }
 
+    @Transactional
+    public ParkingFacility toggleFacilityBlock(Long facilityId) {
+        ParkingFacility facility = facilityRepository.findById(facilityId)
+                .orElseThrow(() -> new IllegalArgumentException("Facility not found"));
+
+        if (facility.getVerificationStatus() == VerificationStatus.BLOCKED) {
+            facility.setVerificationStatus(VerificationStatus.APPROVED);
+        } else {
+            facility.setVerificationStatus(VerificationStatus.BLOCKED);
+        }
+        return facilityRepository.save(facility);
+    }
+
+    public Map<String, Object> generateExecutiveReport() {
+        Map<String, Object> analytics = getSystemAnalytics();
+        List<ParkingFacility> facilities = facilityRepository.findAll();
+        List<ParkingSlot> slots = slotRepository.findAll();
+        List<Booking> bookings = bookingRepository.findAll();
+        List<User> users = userRepository.findAll();
+
+        long approvedFacilities = facilities.stream().filter(f -> f.getVerificationStatus() == VerificationStatus.APPROVED).count();
+        long pendingFacilities = facilities.stream().filter(f -> f.getVerificationStatus() == VerificationStatus.PENDING).count();
+        long blockedFacilities = facilities.stream().filter(f -> f.getVerificationStatus() == VerificationStatus.BLOCKED).count();
+
+        long occupiedSlots = slots.stream().filter(s -> s.getSlotStatus() == SlotStatus.OCCUPIED).count();
+        long availableSlots = slots.stream().filter(s -> s.getSlotStatus() == SlotStatus.AVAILABLE).count();
+        long maintenanceSlots = slots.stream().filter(s -> s.getSlotStatus() == SlotStatus.MAINTENANCE).count();
+        double occupancyRate = slots.isEmpty() ? 0.0 : (double) occupiedSlots / slots.size() * 100.0;
+
+        Map<String, Long> slotsByType = new HashMap<>();
+        for (ParkingSlot s : slots) {
+            String type = s.getVehicleType().name();
+            slotsByType.put(type, slotsByType.getOrDefault(type, 0L) + 1);
+        }
+
+        Map<String, Object> report = new HashMap<>(analytics);
+        report.put("generatedAt", java.time.LocalDateTime.now().toString());
+        report.put("approvedFacilities", approvedFacilities);
+        report.put("pendingFacilities", pendingFacilities);
+        report.put("blockedFacilities", blockedFacilities);
+        report.put("occupiedSlots", occupiedSlots);
+        report.put("maintenanceSlots", maintenanceSlots);
+        report.put("occupancyRatePercentage", Math.round(occupancyRate * 10.0) / 10.0);
+        report.put("slotsByType", slotsByType);
+        report.put("activeUsers", users.stream().filter(u -> u.getAccountStatus() == AccountStatus.ACTIVE).count());
+        report.put("blockedUsers", users.stream().filter(u -> u.getAccountStatus() == AccountStatus.BLOCKED).count());
+
+        return report;
+    }
+
     public Map<String, Object> getSystemAnalytics() {
         long totalUsers = userRepository.count();
         long totalOwners = userRepository.findByRole(Role.ROLE_OWNER).size();

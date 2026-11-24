@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Users, Building, Calendar, DollarSign, Check, X, Ban, Activity } from 'lucide-react';
+import { ShieldCheck, Users, Building, Calendar, DollarSign, Check, X, Ban, Activity, FileText, Printer, ShieldAlert, CheckCircle2 } from 'lucide-react';
 
 export default function AdminPortalView({ currentUser }) {
   const [analytics, setAnalytics] = useState(null);
   const [users, setUsers] = useState([]);
   const [facilities, setFacilities] = useState([]);
   const [bookings, setBookings] = useState([]);
+  const [executiveReport, setExecutiveReport] = useState(null);
   const [activeAdminTab, setActiveAdminTab] = useState('analytics');
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState('');
@@ -83,6 +84,41 @@ export default function AdminPortalView({ currentUser }) {
     }
   };
 
+  const handleToggleBlockFacility = async (facId) => {
+    try {
+      const res = await fetch(`/api/admin/facilities/${facId}/toggle-block`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${currentUser.token}` }
+      });
+      if (res.ok) {
+        setFeedback('Facility block status updated successfully.');
+        fetchAdminData();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchExecutiveReport = async () => {
+    if (!currentUser?.token) return;
+    try {
+      const res = await fetch('/api/admin/report', {
+        headers: { 'Authorization': `Bearer ${currentUser.token}` }
+      });
+      if (res.ok) {
+        setExecutiveReport(await res.json());
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeAdminTab === 'report') {
+      fetchExecutiveReport();
+    }
+  }, [activeAdminTab]);
+
   return (
     <div className="app-container" style={{ textAlign: 'left' }}>
       
@@ -132,6 +168,12 @@ export default function AdminPortalView({ currentUser }) {
           onClick={() => setActiveAdminTab('bookings')}
         >
           <Calendar size={14} /> Global Bookings ({bookings.length})
+        </button>
+        <button
+          className={`btn btn-sm ${activeAdminTab === 'report' ? 'btn-primary' : 'btn-outline'}`}
+          onClick={() => setActiveAdminTab('report')}
+        >
+          <FileText size={14} /> Executive Report
         </button>
       </div>
 
@@ -280,13 +322,16 @@ export default function AdminPortalView({ currentUser }) {
                   <td style={{ padding: '0.75rem 1rem' }}>{fac.owner?.name}</td>
                   <td style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>{fac.address}, {fac.city}</td>
                   <td style={{ padding: '0.75rem 1rem' }}>
-                    <span className={`badge ${fac.verificationStatus === 'APPROVED' ? 'badge-success' : 'badge-warning'}`}>
+                    <span className={`badge ${
+                      fac.verificationStatus === 'APPROVED' ? 'badge-success' :
+                      fac.verificationStatus === 'BLOCKED' ? 'badge-danger' : 'badge-warning'
+                    }`}>
                       {fac.verificationStatus}
                     </span>
                   </td>
                   <td style={{ padding: '0.75rem 1rem' }}>
-                    <div style={{ display: 'flex', gap: '0.35rem' }}>
-                      {fac.verificationStatus !== 'APPROVED' && (
+                    <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                      {fac.verificationStatus !== 'APPROVED' && fac.verificationStatus !== 'BLOCKED' && (
                         <button
                           className="btn btn-success btn-sm"
                           style={{ padding: '4px 8px' }}
@@ -295,7 +340,7 @@ export default function AdminPortalView({ currentUser }) {
                           Approve
                         </button>
                       )}
-                      {fac.verificationStatus !== 'REJECTED' && (
+                      {fac.verificationStatus !== 'REJECTED' && fac.verificationStatus !== 'BLOCKED' && (
                         <button
                           className="btn btn-danger btn-sm"
                           style={{ padding: '4px 8px' }}
@@ -304,6 +349,15 @@ export default function AdminPortalView({ currentUser }) {
                           Reject
                         </button>
                       )}
+                      {/* Use Case 20: blockEntity(e) */}
+                      <button
+                        className={`btn btn-sm ${fac.verificationStatus === 'BLOCKED' ? 'btn-success' : 'btn-danger'}`}
+                        style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+                        onClick={() => handleToggleBlockFacility(fac.facilityId)}
+                        title={fac.verificationStatus === 'BLOCKED' ? 'Restore Facility Listing' : 'Block Facility from Discovery'}
+                      >
+                        <Ban size={12} /> {fac.verificationStatus === 'BLOCKED' ? 'Unblock' : 'Block'}
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -348,6 +402,128 @@ export default function AdminPortalView({ currentUser }) {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Executive Operational Report Tab */}
+      {activeAdminTab === 'report' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <h3 style={{ fontSize: '1.35rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <FileText size={22} color="#2563eb" /> SPS Executive Operations Report
+              </h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.25rem 0 0 0' }}>
+                System-level governance, capacity, telemetry, and revenue statement for platform leadership.
+              </p>
+            </div>
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={() => window.print()}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              <Printer size={16} /> Print Executive Report
+            </button>
+          </div>
+
+          {executiveReport ? (
+            <>
+              {/* Core Operational KPIs */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                <div className="card" style={{ padding: '1.25rem' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>TOTAL PLATFORM REVENUE</div>
+                  <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#065f46', marginTop: '0.25rem' }}>
+                    ₹{executiveReport.totalPlatformRevenue || 0}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                    Across {executiveReport.confirmedBookings || 0} confirmed sessions
+                  </div>
+                </div>
+
+                <div className="card" style={{ padding: '1.25rem' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>PLATFORM OCCUPANCY RATE</div>
+                  <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--primary)', marginTop: '0.25rem' }}>
+                    {executiveReport.occupancyRatePercentage || 0}%
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                    {executiveReport.occupiedSlots || 0} Occupied / {executiveReport.totalSlots || 0} Total Spots
+                  </div>
+                </div>
+
+                <div className="card" style={{ padding: '1.25rem' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>FACILITY GOVERNANCE</div>
+                  <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)', marginTop: '0.25rem' }}>
+                    {executiveReport.approvedFacilities || 0} Active
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                    {executiveReport.pendingFacilities || 0} Pending • {executiveReport.blockedFacilities || 0} Blocked
+                  </div>
+                </div>
+
+                <div className="card" style={{ padding: '1.25rem' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>USER BASE HEALTH</div>
+                  <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#7c3aed', marginTop: '0.25rem' }}>
+                    {executiveReport.totalUsers || 0} Users
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                    {executiveReport.activeUsers || 0} Active • {executiveReport.blockedUsers || 0} Blocked
+                  </div>
+                </div>
+              </div>
+
+              {/* Vehicle Distribution & Capacity breakdown */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                <div className="card">
+                  <h4 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '0.75rem' }}>
+                    Parking Capacity by Vehicle Class
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    {Object.entries(executiveReport.slotsByType || {}).map(([type, count]) => (
+                      <div key={type} style={{ backgroundColor: '#f8fafc', padding: '0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{type}</div>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)', marginTop: '0.2rem' }}>
+                          {count} slots
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="card">
+                  <h4 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '0.75rem' }}>
+                    System Architecture & Compliance Overview
+                  </h4>
+                  <div style={{ fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '0.4rem' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Package Architecture:</span>
+                      <strong style={{ color: '#065f46' }}>9 Acyclic Packages (Clean Arch)</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '0.4rem' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>IoT Telemetry State:</span>
+                      <strong style={{ color: '#065f46' }}>ANPR Gate + Ultrasonic Ready</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '0.4rem' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Database Integrity:</span>
+                      <strong style={{ color: '#065f46' }}>MySQL 8.0 InnoDB (ACID)</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '0.4rem' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Payment Gateway Adapter:</span>
+                      <strong style={{ color: '#065f46' }}>Atomic Retries & Refunds Active</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Report Generated At:</span>
+                      <strong>{new Date(executiveReport.generatedAt).toLocaleString()}</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '3rem' }}>Compiling executive report...</div>
+          )}
+
         </div>
       )}
 

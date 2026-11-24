@@ -39,4 +39,11 @@ public class DiscoveryController {
     public ResponseEntity<Map<String, Object>> getFacilityDetails(@PathVariable Long id) {
         return ResponseEntity.ok(discoveryService.getFacilityDetailsWithSlots(id));
     }
+
+    @GetMapping("/facilities/{id}/alternatives")
+    public ResponseEntity<List<DiscoveryService.FacilityDiscoveryCard>> getAlternativeFacilities(
+            @PathVariable Long id,
+            @RequestParam(required = false) VehicleType vehicleType) {
+        return ResponseEntity.ok(discoveryService.getAlternativeFacilities(id, vehicleType));
+    }
 }

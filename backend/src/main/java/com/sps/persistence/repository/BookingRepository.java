@@ -31,5 +31,15 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     @Query("SELECT b FROM Booking b WHERE b.bookingState = 'SLOT_LOCKED' AND b.createdAt < :cutoff")
     List<Booking> findExpiredPendingBookings(@Param("cutoff") LocalDateTime cutoff);
 
+    @Query("SELECT b FROM Booking b WHERE b.slot.facility.facilityId = :facilityId AND " +
+           "(UPPER(b.vehicleNumber) = UPPER(:vehicleNumber) OR (b.traveler.vehicleNumber IS NOT NULL AND UPPER(b.traveler.vehicleNumber) = UPPER(:vehicleNumber))) AND " +
+           "b.bookingState = 'CONFIRMED' ORDER BY b.startTime ASC")
+    List<Booking> findActiveBookingForPlateAtFacility(@Param("facilityId") Long facilityId, @Param("vehicleNumber") String vehicleNumber);
+
+    @Query("SELECT b FROM Booking b WHERE b.slot.facility.facilityId = :facilityId AND " +
+           "(UPPER(b.vehicleNumber) = UPPER(:vehicleNumber) OR (b.traveler.vehicleNumber IS NOT NULL AND UPPER(b.traveler.vehicleNumber) = UPPER(:vehicleNumber))) AND " +
+           "b.bookingState IN ('CONFIRMED', 'SLOT_LOCKED') AND b.slot.slotStatus = 'OCCUPIED' ORDER BY b.startTime ASC")
+    List<Booking> findOccupiedBookingForPlateAtFacility(@Param("facilityId") Long facilityId, @Param("vehicleNumber") String vehicleNumber);
+
     List<Booking> findByBookingState(BookingState state);
 }

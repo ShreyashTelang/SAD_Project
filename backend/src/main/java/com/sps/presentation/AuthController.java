@@ -164,4 +164,37 @@ public class AuthController {
 
         return ResponseEntity.ok(user);
     }
+
+    @PutMapping("/profile")
+    public ResponseEntity<?> updateProfile(@Valid @RequestBody UpdateProfileRequest request) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        User user = userRepository.findByEmail(auth.getName()).orElse(null);
+        if (user == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        user.setName(request.getName().trim());
+        if (request.getVehicleNumber() != null) {
+            user.setVehicleNumber(request.getVehicleNumber().trim());
+        }
+        if (request.getPreferredVehicleType() != null) {
+            user.setPreferredVehicleType(request.getPreferredVehicleType());
+        }
+        if (request.getPayoutAccountRef() != null) {
+            user.setPayoutAccountRef(request.getPayoutAccountRef().trim());
+        }
+        if (request.getNewPassword() != null && !request.getNewPassword().trim().isEmpty()) {
+            user.setPasswordHash(passwordEncoder.encode(request.getNewPassword().trim()));
+        }
+
+        User updatedUser = userRepository.save(user);
+        return ResponseEntity.ok(Map.of(
+                "message", "Profile updated successfully.",
+                "user", updatedUser
+        ));
+    }
 }

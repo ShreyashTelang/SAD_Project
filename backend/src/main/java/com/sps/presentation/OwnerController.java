@@ -86,4 +86,10 @@ public class OwnerController {
         User owner = getAuthenticatedOwner();
         return ResponseEntity.ok(ownerService.getOwnerDashboardStats(owner));
     }
+
+    @GetMapping("/reports/revenue")
+    public ResponseEntity<Map<String, Object>> getRevenueReport() {
+        User owner = getAuthenticatedOwner();
+        return ResponseEntity.ok(ownerService.generateOwnerRevenueReport(owner));
+    }
 }

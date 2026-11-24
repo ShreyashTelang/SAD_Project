@@ -46,6 +46,11 @@ public class AdminController {
         return ResponseEntity.ok(adminService.updateFacilityVerification(id, status));
     }
 
+    @PatchMapping("/facilities/{id}/toggle-block")
+    public ResponseEntity<ParkingFacility> toggleFacilityBlock(@PathVariable Long id) {
+        return ResponseEntity.ok(adminService.toggleFacilityBlock(id));
+    }
+
     @GetMapping("/bookings")
     public ResponseEntity<List<Booking>> getAllBookings() {
         return ResponseEntity.ok(adminService.getAllBookings());
@@ -54,5 +59,10 @@ public class AdminController {
     @GetMapping("/analytics")
     public ResponseEntity<Map<String, Object>> getAnalytics() {
         return ResponseEntity.ok(adminService.getSystemAnalytics());
+    }
+
+    @GetMapping("/report")
+    public ResponseEntity<Map<String, Object>> getExecutiveReport() {
+        return ResponseEntity.ok(adminService.generateExecutiveReport());
     }
 }

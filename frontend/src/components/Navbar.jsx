@@ -1,7 +1,7 @@
 import React from 'react';
-import { Car, ShieldCheck, UserCheck, LogOut, Sparkles, MapPin, Calendar, LayoutDashboard } from 'lucide-react';
+import { Car, ShieldCheck, UserCheck, LogOut, Sparkles, MapPin, Calendar, LayoutDashboard, User } from 'lucide-react';
 
-export default function Navbar({ currentUser, activeTab, setActiveTab, onLogout, onQuickLogin, onOpenAuth }) {
+export default function Navbar({ currentUser, activeTab, setActiveTab, onLogout, onQuickLogin, onOpenAuth, onOpenProfile }) {
   return (
     <header style={{
       backgroundColor: '#ffffff',
@@ -115,9 +115,13 @@ export default function Navbar({ currentUser, activeTab, setActiveTab, onLogout,
           {/* User profile / Login */}
           {currentUser ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>
-                  {currentUser.name}
+              <div
+                style={{ textAlign: 'right', cursor: 'pointer' }}
+                onClick={onOpenProfile}
+                title="Click to view & edit Profile"
+              >
+                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.25rem', justifyContent: 'flex-end' }}>
+                  <User size={13} color="#2563eb" /> {currentUser.name}
                 </div>
                 <div className={`badge ${
                   currentUser.role === 'ROLE_ADMIN' ? 'badge-danger' :
@@ -126,6 +130,14 @@ export default function Navbar({ currentUser, activeTab, setActiveTab, onLogout,
                   {currentUser.role.replace('ROLE_', '')}
                 </div>
               </div>
+              <button
+                className="btn btn-outline btn-sm"
+                onClick={onOpenProfile}
+                title="My Profile"
+                style={{ padding: '0.35rem 0.55rem', fontSize: '0.75rem', fontWeight: 600 }}
+              >
+                Profile
+              </button>
               <button
                 className="btn btn-outline btn-sm"
                 onClick={onLogout}

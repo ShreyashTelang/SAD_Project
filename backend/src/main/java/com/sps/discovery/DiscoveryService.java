@@ -153,4 +153,65 @@ public class DiscoveryService {
 
         return response;
     }
+
+    @Transactional(readOnly = true)
+    public List<FacilityDiscoveryCard> getAlternativeFacilities(Long currentFacilityId, VehicleType vehicleType) {
+        ParkingFacility currentFacility = facilityRepository.findById(currentFacilityId)
+                .orElse(null);
+
+        Double currentLat = currentFacility != null ? currentFacility.getLatitude() : null;
+        Double currentLon = currentFacility != null ? currentFacility.getLongitude() : null;
+
+        List<ParkingFacility> approved = facilityRepository.findByVerificationStatus(VerificationStatus.APPROVED);
+        List<FacilityDiscoveryCard> alternatives = new ArrayList<>();
+
+        for (ParkingFacility f : approved) {
+            if (f.getFacilityId().equals(currentFacilityId)) {
+                continue;
+            }
+
+            List<ParkingSlot> slots = slotRepository.findByFacility(f);
+            long availableCount = slots.stream().filter(s -> s.getSlotStatus() == SlotStatus.AVAILABLE).count();
+
+            if (vehicleType != null) {
+                long vehicleTypeAvailable = slots.stream()
+                        .filter(s -> s.getVehicleType() == vehicleType && s.getSlotStatus() == SlotStatus.AVAILABLE)
+                        .count();
+                if (vehicleTypeAvailable == 0) {
+                    continue; // Skip if no slots for requested vehicle type
+                }
+            } else if (availableCount == 0) {
+                continue; // Skip full facilities
+            }
+
+            FacilityDiscoveryCard card = new FacilityDiscoveryCard();
+            card.facilityId = f.getFacilityId();
+            card.name = f.getName();
+            card.address = f.getAddress();
+            card.city = f.getCity();
+            card.latitude = f.getLatitude();
+            card.longitude = f.getLongitude();
+            card.totalSlots = slots.size();
+            card.availableSlots = (int) availableCount;
+
+            if (currentLat != null && currentLon != null && f.getLatitude() != null && f.getLongitude() != null) {
+                card.distanceKm = mapServiceAdapter.calculateDistanceKm(currentLat, currentLon, f.getLatitude(), f.getLongitude());
+                card.travelTimeMinutes = mapServiceAdapter.estimateTravelTimeMinutes(card.distanceKm);
+            }
+
+            Double avgRating = reviewRepository.getAverageRatingForFacility(f);
+            card.averageRating = avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : 4.5;
+            card.totalReviews = reviewRepository.findByFacility(f).size();
+
+            List<PricingRule> rules = pricingRuleRepository.findByFacility(f);
+            for (PricingRule rule : rules) {
+                card.pricingByVehicle.put(rule.getVehicleType(), rule.getRatePerHour());
+            }
+
+            alternatives.add(card);
+        }
+
+        alternatives.sort(Comparator.comparing(c -> c.distanceKm != null ? c.distanceKm : Double.MAX_VALUE));
+        return alternatives.stream().limit(5).collect(Collectors.toList());
+    }
 }

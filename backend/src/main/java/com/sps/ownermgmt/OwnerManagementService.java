@@ -119,4 +119,84 @@ public class OwnerManagementService {
 
         return stats;
     }
+
+    public Map<String, Object> generateOwnerRevenueReport(User owner) {
+        List<ParkingFacility> facilities = facilityRepository.findByOwner(owner);
+        List<Booking> bookings = bookingRepository.findByFacilityOwner(owner);
+
+        BigDecimal totalGross = BigDecimal.ZERO;
+        long confirmedCount = 0;
+        long completedCount = 0;
+        long cancelledCount = 0;
+
+        Map<String, BigDecimal> revenueByVehicle = new HashMap<>();
+
+        for (Booking b : bookings) {
+            if (b.getBookingState() == BookingState.CONFIRMED || b.getBookingState() == BookingState.COMPLETED) {
+                if (b.getBookingState() == BookingState.CONFIRMED) confirmedCount++;
+                if (b.getBookingState() == BookingState.COMPLETED) completedCount++;
+
+                if (b.getTotalAmount() != null) {
+                    totalGross = totalGross.add(b.getTotalAmount());
+                    String vType = b.getSlot().getVehicleType().name();
+                    revenueByVehicle.put(vType, revenueByVehicle.getOrDefault(vType, BigDecimal.ZERO).add(b.getTotalAmount()));
+                }
+            } else if (b.getBookingState() == BookingState.CANCELLED) {
+                cancelledCount++;
+            }
+        }
+
+        BigDecimal platformFee = totalGross.multiply(new BigDecimal("0.10"));
+        BigDecimal netPayout = totalGross.subtract(platformFee);
+
+        List<Map<String, Object>> facilityDetails = new ArrayList<>();
+        int allSlots = 0;
+        for (ParkingFacility f : facilities) {
+            List<ParkingSlot> slots = slotRepository.findByFacility(f);
+            allSlots += slots.size();
+            long occ = slots.stream().filter(s -> s.getSlotStatus() == SlotStatus.OCCUPIED).count();
+            long avail = slots.stream().filter(s -> s.getSlotStatus() == SlotStatus.AVAILABLE).count();
+
+            List<Booking> fBookings = bookings.stream()
+                    .filter(b -> b.getSlot().getFacility().getFacilityId().equals(f.getFacilityId()))
+                    .toList();
+
+            BigDecimal fRevenue = fBookings.stream()
+                    .filter(b -> (b.getBookingState() == BookingState.CONFIRMED || b.getBookingState() == BookingState.COMPLETED) && b.getTotalAmount() != null)
+                    .map(Booking::getTotalAmount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            Map<String, Object> fMap = new HashMap<>();
+            fMap.put("facilityId", f.getFacilityId());
+            fMap.put("name", f.getName());
+            fMap.put("address", f.getAddress() + ", " + f.getCity());
+            fMap.put("status", f.getVerificationStatus().name());
+            fMap.put("totalSlots", slots.size());
+            fMap.put("availableSlots", avail);
+            fMap.put("occupiedSlots", occ);
+            fMap.put("occupancyPercentage", slots.isEmpty() ? 0.0 : Math.round(((double) occ / slots.size() * 100.0) * 10.0) / 10.0);
+            fMap.put("bookingsCount", fBookings.size());
+            fMap.put("revenue", fRevenue);
+            facilityDetails.add(fMap);
+        }
+
+        Map<String, Object> report = new HashMap<>();
+        report.put("ownerName", owner.getName());
+        report.put("ownerEmail", owner.getEmail());
+        report.put("payoutAccountRef", owner.getPayoutAccountRef() != null ? owner.getPayoutAccountRef() : "Not Linked");
+        report.put("generatedAt", java.time.LocalDateTime.now().toString());
+        report.put("totalFacilities", facilities.size());
+        report.put("totalSlots", allSlots);
+        report.put("totalBookings", bookings.size());
+        report.put("confirmedBookings", confirmedCount);
+        report.put("completedBookings", completedCount);
+        report.put("cancelledBookings", cancelledCount);
+        report.put("grossRevenue", totalGross);
+        report.put("platformFee", platformFee);
+        report.put("netPayout", netPayout);
+        report.put("facilityBreakdown", facilityDetails);
+        report.put("revenueByVehicleType", revenueByVehicle);
+
+        return report;
+    }
 }
