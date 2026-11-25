@@ -1,5 +1,6 @@
 package com.sps.administration;
 
+import com.sps.availability.AvailabilityBookingEngine;
 import com.sps.persistence.domain.*;
 import com.sps.persistence.repository.BookingRepository;
 import com.sps.persistence.repository.ParkingFacilityRepository;
@@ -18,15 +19,22 @@ public class AdminService {
     private final ParkingFacilityRepository facilityRepository;
     private final ParkingSlotRepository slotRepository;
     private final BookingRepository bookingRepository;
+    private final AvailabilityBookingEngine availabilityEngine;
 
     public AdminService(UserRepository userRepository,
                         ParkingFacilityRepository facilityRepository,
                         ParkingSlotRepository slotRepository,
-                        BookingRepository bookingRepository) {
+                        BookingRepository bookingRepository,
+                        AvailabilityBookingEngine availabilityEngine) {
         this.userRepository = userRepository;
         this.facilityRepository = facilityRepository;
         this.slotRepository = slotRepository;
         this.bookingRepository = bookingRepository;
+        this.availabilityEngine = availabilityEngine;
+    }
+
+    public void resetAllSlotsToAvailable() {
+        availabilityEngine.resetAllSlotsToAvailable();
     }
 
     public List<User> getAllUsers() {

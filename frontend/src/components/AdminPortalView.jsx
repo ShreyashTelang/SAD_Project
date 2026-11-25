@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Users, Building, Calendar, DollarSign, Check, X, Ban, Activity, FileText, Printer, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Users, Building, Calendar, DollarSign, Check, X, Ban, Activity, FileText, Printer, ShieldAlert, CheckCircle2, RefreshCw } from 'lucide-react';
 
 export default function AdminPortalView({ currentUser }) {
   const [analytics, setAnalytics] = useState(null);
@@ -119,15 +119,41 @@ export default function AdminPortalView({ currentUser }) {
     }
   }, [activeAdminTab]);
 
+  const handleResetAllSlots = async () => {
+    if (!confirm('Reset all parking spaces to AVAILABLE and expire old locks?')) return;
+    try {
+      const res = await fetch('/api/admin/reset-all-slots', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${currentUser.token}` }
+      });
+      if (res.ok) {
+        setFeedback('All parking slots across all facilities have been successfully reset to AVAILABLE.');
+        fetchAdminData();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   return (
     <div className="app-container" style={{ textAlign: 'left' }}>
       
       {/* Title */}
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>System Administration Console</h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-          Platform-wide governance: approvals, user blocking, facility listing oversight, and analytics.
-        </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0 }}>System Administration Console</h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: '0.25rem 0 0 0' }}>
+            Platform-wide governance: approvals, user blocking, facility listing oversight, and analytics.
+          </p>
+        </div>
+        <button
+          className="btn btn-warning btn-sm"
+          onClick={handleResetAllSlots}
+          style={{ color: '#92400e', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          title="Reset all slots to Available and expire old locks"
+        >
+          <RefreshCw size={14} /> Reset All Slots to Available
+        </button>
       </div>
 
       {feedback && (

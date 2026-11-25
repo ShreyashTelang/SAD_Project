@@ -65,4 +65,10 @@ public class AdminController {
     public ResponseEntity<Map<String, Object>> getExecutiveReport() {
         return ResponseEntity.ok(adminService.generateExecutiveReport());
     }
+
+    @PostMapping("/reset-all-slots")
+    public ResponseEntity<Map<String, Object>> resetAllSlots() {
+        adminService.resetAllSlotsToAvailable();
+        return ResponseEntity.ok(Map.of("message", "All parking slots have been reset to AVAILABLE."));
+    }
 }

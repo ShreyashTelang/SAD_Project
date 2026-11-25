@@ -90,6 +90,7 @@ public class AvailabilityBookingEngine {
     /**
      * Periodic and on-demand cleanup of expired locks to maintain real-time inventory integrity.
      */
+    @Scheduled(fixedRate = 10000)
     @Transactional
     public synchronized void refreshAvailability() {
         LocalDateTime now = LocalDateTime.now();
@@ -102,6 +103,27 @@ public class AvailabilityBookingEngine {
         // Also update any pending bookings past 10 minutes to EXPIRED
         List<Booking> expiredBookings = bookingRepository.findExpiredPendingBookings(now.minusMinutes(10));
         for (Booking b : expiredBookings) {
+            b.setBookingState(BookingState.EXPIRED);
+            bookingRepository.save(b);
+        }
+    }
+
+    /**
+     * Force reset all slots back to AVAILABLE (excluding MAINTENANCE) and expire all stale locked bookings.
+     */
+    @Transactional
+    public synchronized void resetAllSlotsToAvailable() {
+        List<ParkingSlot> slots = slotRepository.findAll();
+        for (ParkingSlot s : slots) {
+            if (s.getSlotStatus() != SlotStatus.MAINTENANCE) {
+                s.release();
+                slotRepository.save(s);
+            }
+        }
+        List<Booking> lockedBookings = bookingRepository.findAll().stream()
+                .filter(b -> b.getBookingState() == BookingState.SLOT_LOCKED)
+                .toList();
+        for (Booking b : lockedBookings) {
             b.setBookingState(BookingState.EXPIRED);
             bookingRepository.save(b);
         }

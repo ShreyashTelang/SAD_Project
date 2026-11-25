@@ -1,5 +1,6 @@
 package com.sps.discovery;
 
+import com.sps.availability.AvailabilityBookingEngine;
 import com.sps.integration.MapServiceAdapter;
 import com.sps.persistence.domain.*;
 import com.sps.persistence.repository.ParkingFacilityRepository;
@@ -21,17 +22,20 @@ public class DiscoveryService {
     private final PricingRuleRepository pricingRuleRepository;
     private final ReviewRepository reviewRepository;
     private final MapServiceAdapter mapServiceAdapter;
+    private final AvailabilityBookingEngine availabilityEngine;
 
     public DiscoveryService(ParkingFacilityRepository facilityRepository,
                             ParkingSlotRepository slotRepository,
                             PricingRuleRepository pricingRuleRepository,
                             ReviewRepository reviewRepository,
-                            MapServiceAdapter mapServiceAdapter) {
+                            MapServiceAdapter mapServiceAdapter,
+                            AvailabilityBookingEngine availabilityEngine) {
         this.facilityRepository = facilityRepository;
         this.slotRepository = slotRepository;
         this.pricingRuleRepository = pricingRuleRepository;
         this.reviewRepository = reviewRepository;
         this.mapServiceAdapter = mapServiceAdapter;
+        this.availabilityEngine = availabilityEngine;
     }
 
     public static class FacilityDiscoveryCard {
@@ -50,7 +54,7 @@ public class DiscoveryService {
         public Map<VehicleType, BigDecimal> pricingByVehicle = new HashMap<>();
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<FacilityDiscoveryCard> searchAndFilter(String query,
                                                        Double userLat,
                                                        Double userLon,
@@ -58,6 +62,8 @@ public class DiscoveryService {
                                                        VehicleType vehicleType,
                                                        BigDecimal maxPrice,
                                                        Double minRating) {
+
+        availabilityEngine.refreshAvailability();
 
         List<ParkingFacility> facilities;
         if (query != null && !query.trim().isEmpty()) {
@@ -132,8 +138,10 @@ public class DiscoveryService {
         return result;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public Map<String, Object> getFacilityDetailsWithSlots(Long facilityId) {
+        availabilityEngine.refreshAvailability();
+
         ParkingFacility facility = facilityRepository.findById(facilityId)
                 .orElseThrow(() -> new IllegalArgumentException("Parking facility not found"));
 
